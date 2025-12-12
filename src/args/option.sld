@@ -1,3 +1,5 @@
+;; Extracted from Chibi Scheme. Thanks to Alex Shinn.
+
 (define-library (args option)
   (import (scheme base)
           (args help optional))
