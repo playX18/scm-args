@@ -105,7 +105,7 @@
           (read-next-arg-as-value parser option name)
           #t)))
     ((string-prefix? "no-" name)
-      (let* ((positive-value (substring name 3))
+      (let* ((positive-value (string-copy name 3))
              (option (grammar-find-by-name-or-alias (parser-grammar parser) positive-value)))
         (cond 
           ((not option)
@@ -128,15 +128,15 @@
     (else 
       (let* ((index (string-index (current parser) #\=))
              (name (if index 
-                      (substring (current parser) 2 index)
-                      (substring (current parser) 2))))
+                      (string-copy (current parser) 2 index)
+                      (string-copy (current parser) 2))))
         (cond 
           ((not (string-every letter-or-digit-or-hyphen-or-underscore? name)) 
             (format #t "Invalid option name '--~a'.~%" name)
           #f)
           (else 
             (let ((value (if index 
-                           (substring (current parser) (+ 1 index))
+                           (string-copy (current parser) (+ 1 index))
                            #f)))
               (if (and value (string-contains value "\n"))
                 #f
@@ -160,14 +160,14 @@
       #t)))
 
 (define (handle-abbreviation parser letters-and-digits rest innermost-command)
-  (define c (substring letters-and-digits 0 1))
+  (define c (string-copy letters-and-digits 0 1))
   (define first (grammar-find-by-abbr (parser-grammar parser) c))
   (cond 
     ((not first)
       (validate (parser-parent parser) (string-append "Unknown option '-" c "'.") c)
       (handle-abbreviation (parser-parent parser) letters-and-digits rest innermost-command))
     ((not (option-flag? (cdr first)))
-      (let ((value (string-append (substring letters-and-digits 1) rest)))
+      (let ((value (string-append (string-copy letters-and-digits 1) rest)))
         (set-option! parser (cdr first) value c))
       (advance! parser)
       #t)
@@ -197,8 +197,8 @@
               ((= index 1) #f)
               (else 
                 (handle-abbreviation parser 
-                                     (substring cur 1 index) 
-                                     (substring cur index) 
+                                     (string-copy cur 1 index) 
+                                     (string-copy cur index) 
                                      innermost-command)))))))))
 
 (define (handle-solo-option parser opt)
@@ -220,7 +220,7 @@
     ((not (= (string-length (current parser)) 2)) #f)
     ((not (string-prefix? "-" (current parser))) #f)
     (else 
-      (let ((opt (substring (current parser) 1)))
+      (let ((opt (string-copy (current parser) 1)))
         
         (if (letter-or-digit? (string-ref opt 0))
           (handle-solo-option parser opt)

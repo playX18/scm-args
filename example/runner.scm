@@ -1,4 +1,4 @@
-(import (args runner) (args grammar))
+(import (args runner) (args grammar) (scheme base))
 
 (define runner (make-command-runner "example" "Simple showcase of args library."))
 

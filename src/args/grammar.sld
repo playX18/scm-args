@@ -1,6 +1,6 @@
 (define-library (args grammar)
   (import (scheme base)
-          (only (scheme list) fold)
+          (only (srfi 1) fold)
           (srfi 13)
           (args option)
           (args help optional))

@@ -6,7 +6,9 @@
 (import (args grammar)
         (args results)
         (args parser)
-        (scheme write))
+        (scheme write)
+        (scheme base))
+
 
 (define grammar (make-grammar))
 
