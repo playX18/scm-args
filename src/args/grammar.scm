@@ -126,6 +126,7 @@
 
 
 (define (grammar-find-by-name-or-alias grammar name)
+
   (let ((alias (assoc name (grammar-aliases grammar))))
     (let ((name (if alias (cdr alias) name)))
       (cond 

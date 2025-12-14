@@ -240,7 +240,7 @@
 (define (parse parser) 
   (define arguments (map (lambda (x) x) (parser-args parser))) ; copy args
   (define command #f)
-  
+
   (let loop ()
     (cond 
       ((null? (parser-args parser)) (finish-parsing parser command arguments))
@@ -249,11 +249,13 @@
           ((string=? (current parser) "--") (finish-parsing parser command arguments))
           ((assoc (current parser) (grammar-commands (parser-grammar parser)))
             => (lambda (entry)
+               
                 (set! command (cons (advance! parser) (cdr entry)))
                 (finish-parsing parser command arguments)))
           ((and (not (string=? (current parser) "--help"))
                 (not (string=? (current parser) "-h")) 
                 (grammar-default-command (parser-grammar parser))) => (lambda (command)
+      
             (set! command (cons (advance! parser) (car (assoc command (grammar-commands (parser-grammar parser))))))))
           (else 
             (cond 
@@ -263,21 +265,24 @@
               ((not (grammar-allow-trailing? (parser-grammar parser)))
                 (finish-parsing parser command arguments))
               (else     
+                
                 (parser-rest-set! parser 
                   (append (parser-rest parser) (list (advance! parser))))
                 (loop)))))))))
 
 (define (finish-parsing parser command arguments)
-  ;;  If there is a default command and we did not select any other commands
+  ;; If there is a default command and we did not select any other commands
   ;; and we don't have any trailing arguments then select the default
   ;; command unless user requested help.
   (define command-results #f)
   (when (and (not command)
              (null? (parser-rest parser))
              (not (assoc "help" (parser-results parser))))
+    
     (cond 
       ((grammar-default-command (parser-grammar parser)) => (lambda (default-command)
         (set! command (cons default-command (car (assoc default-command (grammar-commands (parser-grammar parser))))))))))
+
   (when command 
     (validate (null? (parser-rest parser)) "cannot specify arguments before command")
     (let ((command-parser (make-parser (car command) (cdr command) (parser-args parser) parser (parser-rest parser))))

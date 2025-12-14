@@ -75,3 +75,9 @@
           (cond 
             ((assoc (option-name (cdr option)) parsed) => cdr)
             (else #f)))))))
+
+(define (argument-results-has-option? results name)
+  (define parsed (argument-results-parsed results))
+  (cond 
+    ((assoc name parsed) => (lambda (pair) #t))
+    (else #f)))

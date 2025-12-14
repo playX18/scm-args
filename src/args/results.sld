@@ -15,6 +15,7 @@
     argument-results-arguments
     argument-results-flags
     argument-results-options
-    argument-results-multi-options)
+    argument-results-multi-options
+    argument-results-has-option?)
   
   (include "results.scm"))
