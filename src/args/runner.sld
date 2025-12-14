@@ -3,7 +3,7 @@
 (define-library (args runner)
   (import (scheme base)
           (srfi 1)
-          (srfi 13)
+          (srfi 130)
           (srfi 132) ; sorting for displaying help
           (args grammar)
           (args parser)

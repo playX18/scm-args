@@ -2,7 +2,7 @@
 
 (define-library (args parser)
   (import (scheme base)
-          (srfi 13)
+          (srfi 130)
           (srfi 1)
           (args option)
           (args grammar)

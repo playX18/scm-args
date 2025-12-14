@@ -132,12 +132,14 @@
                       (string-copy (current parser) 2))))
         (cond 
           ((not (string-every letter-or-digit-or-hyphen-or-underscore? name)) 
-            (format #t "Invalid option name '--~a'.~%" name)
+            (error (string-append "Invalid option name '--" name "'." ))
+            ;(format #t "Invalid option name '--~a'.~%" name)
           #f)
           (else 
-            (let ((value (if index 
+            (let ((value (if (= index (string-length (current parser)))
+                           #f 
                            (string-copy (current parser) (+ 1 index))
-                           #f)))
+                           )))
               (if (and value (string-contains value "\n"))
                 #f
                 (handle-long-option parser name value)))))))))

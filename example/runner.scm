@@ -10,7 +10,7 @@
 (define cmd (command "run" 
   'description: "Run the project in current directory"
   'run: (lambda (command)
-    (printf "running~%"))))
+    #f)))
 (define cmd-grammar (command-grammar cmd))
 (grammar-add-option! cmd-grammar "path"
   'help: "Path to the project directory."

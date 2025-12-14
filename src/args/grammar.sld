@@ -1,7 +1,7 @@
 (define-library (args grammar)
   (import (scheme base)
           (only (srfi 1) fold)
-          (srfi 13)
+          (srfi 130)
           (args option)
           (args help optional))
   (export 
@@ -19,7 +19,6 @@
     grammar-add-multi-option!
     grammar-find-by-name-or-alias
     grammar-find-by-abbr
-    grammar-defaults-for
     grammar-add-command!
     grammar-add-separator!
     grammar-usage
