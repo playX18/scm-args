@@ -17,7 +17,8 @@
                    (make-grammar)))
   (grammar-add-flag! (command-runner-grammar runner) "help"
     'abbr: "h"
-    'help: "Display help information for the command.")
+    'help: "Display help information for the command."
+    'hide-negated-usage?: #t)
   (command-runner-add-command! runner help-command)
   runner)
 

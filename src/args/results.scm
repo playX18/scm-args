@@ -55,7 +55,7 @@
             (not (assoc name parsed)))
         (error (string-append "Mandatory option '--" name "' not provided")))
       (else 
-        (option-value option
+        (option-value (cdr option)
           (cond 
             ((assoc (option-name (cdr option)) parsed) => cdr)
             (else #f)))))))
