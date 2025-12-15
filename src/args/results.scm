@@ -71,7 +71,7 @@
       ((not (option-multi? (cdr option)))
         (error (string-append "Option '--" name "' is not a multi-value option")))
       (else 
-        (option-value option
+        (option-value (cdr option)
           (cond 
             ((assoc (option-name (cdr option)) parsed) => cdr)
             (else #f)))))))
