@@ -1,6 +1,6 @@
 (package 
-  (name (spkg))
-  (version "0.1.0")
+  (name (args))
+  (version "0.1.1")
   (libraries (args)))
 
 (dependencies)
