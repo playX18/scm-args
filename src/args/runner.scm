@@ -40,6 +40,18 @@
   (write-string (string-append "Run '" (command-runner-executable-name runner) " help <command>' for details on a specific command.") buffer)
   (get-output-string buffer))
 
+(define (sort-command-names names)
+  (define (insert name sorted)
+    (cond
+      ((null? sorted) (list name))
+      ((string<? name (car sorted)) (cons name sorted))
+      (else (cons (car sorted) (insert name (cdr sorted))))))
+  (let loop ((names names)
+             (sorted '()))
+    (if (null? names)
+      sorted
+      (loop (cdr names) (insert (car names) sorted)))))
+
 (define (get-command-usage commands subcommand? default-command)
   (define names (map car (filter 
     (lambda (entry)
@@ -54,8 +66,8 @@
     (not (command-hidden? cmd))) names))
   
   (define sorted-names (if (null? visible)
-    (list-sort string<? names)
-    (list-sort string<? visible)))
+    (sort-command-names names)
+    (sort-command-names visible)))
 
   (let loop ((categories '()) (names sorted-names))
     (cond 

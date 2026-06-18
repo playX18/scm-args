@@ -3,12 +3,17 @@
 (define-library (args runner)
   (import (scheme base)
           (srfi 1)
-          (srfi 130)
-          (srfi 132) ; sorting for displaying help
           (args grammar)
           (args parser)
           (args results)
           (args help optional))
+  (cond-expand
+    ((library (srfi 130))
+      (import (srfi 130)))
+    (else
+      (import (only (args string)
+                    string-join
+                    string-pad-right))))
   (export 
     make-command-runner
     command-runner-add-command! 

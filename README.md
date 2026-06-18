@@ -13,4 +13,4 @@ Example help output:
 # Requirements
 
 - R7RS-small compatible Scheme implementation
-- SRFI-1, SRFI-13, and SRFI-132
+- SRFI-1; SRFI-130 is used when available, otherwise bundled string helpers are used

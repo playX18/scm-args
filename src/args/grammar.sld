@@ -1,9 +1,15 @@
 (define-library (args grammar)
   (import (scheme base)
           (only (srfi 1) fold)
-          (srfi 130)
           (args option)
           (args help optional))
+  (cond-expand
+    ((library (srfi 130))
+      (import (srfi 130)))
+    (else
+      (import (only (args string)
+                    string-join
+                    string-pad-right))))
   (export 
     make-grammar
     make-grammar-builder
