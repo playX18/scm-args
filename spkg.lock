@@ -1,5 +1,4 @@
-(lockfile
-  (version 2)
-  (root-checksum
-    "40076982835ed0e74a706644321ba4bb3e866f5023fc23854a193a1934c428cf"))
-
+(lockfile (version 2)
+  (root
+    (name (args)) (version "0.1.1") (scheme gauche) (target #f) (profile debug) (compile-mode fresh-auto) (source-hash "616712842 418") (features default)
+    (implementation (name gauche) (command "gosh") (version "Gauche scheme shell, version 0.9.15 [utf-8,pthreads], x86_64-pc-linux-gnu"))) (packages) (overrides))
