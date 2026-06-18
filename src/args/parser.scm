@@ -52,6 +52,9 @@
         (string-append "'" value "' is not an allowed value for option '" arg "'.")
         arg))))
 
+(define (parser-allow-anything? parser)
+  (grammar-allow-anything? (parser-grammar parser)))
+
 
 
 (define (set-option! parser option value arg)
@@ -109,14 +112,18 @@
              (option (grammar-find-by-name-or-alias (parser-grammar parser) positive-value)))
         (cond 
           ((not option)
-            (validate (parser-parent parser) (string-append "Unknown option '--" name "'.") name)
-            (handle-long-option (parser-parent parser) name value))
+            (if (parser-allow-anything? parser)
+              #f
+              (begin
+                (validate (parser-parent parser) (string-append "Unknown option '--" name "'.") name)
+                (handle-long-option (parser-parent parser) name value))))
           (else 
             (advance! parser)
             (validate (option-flag? option) (string-append "Option '--" positive-value "' is not negatable.") positive-value)
             (validate (option-negatable? option) (string-append "Option '--" positive-value "' is not negatable.") positive-value)
             (set-flag! parser option #f)
             #t)) ))
+    ((parser-allow-anything? parser) #f)
     (else 
       (validate (parser-parent parser) (string-append "Unknown option '--" name "'.") name)
       (handle-long-option (parser-parent parser) name value))))
@@ -158,8 +165,11 @@
   (define option (grammar-find-by-abbr (parser-grammar parser) c))
   (cond 
     ((not option)
+      (if (parser-allow-anything? parser)
+        #f
+        (begin
       (validate (parser-parent parser) (string-append "Unknown option '-" (string c) "'.") (string c))
-      (parse-short-flag (parser-parent parser) c))
+          (parse-short-flag (parser-parent parser) c))))
     (else 
       (validate (option-flag? option) (string-append "Option '-" (string c) "' is not a flag.") (string c))
       (set-flag! parser option #t)
@@ -170,8 +180,11 @@
   (define first (grammar-find-by-abbr (parser-grammar parser) c))
   (cond 
     ((not first)
+      (if (parser-allow-anything? parser)
+        #f
+        (begin
       (validate (parser-parent parser) (string-append "Unknown option '-" c "'.") c)
-      (handle-abbreviation (parser-parent parser) letters-and-digits rest innermost-command))
+          (handle-abbreviation (parser-parent parser) letters-and-digits rest innermost-command))))
     ((not (option-flag? (cdr first)))
       (let ((value (string-append (substring letters-and-digits 1 (string-length letters-and-digits)) rest)))
         (set-option! parser (cdr first) value c))
@@ -211,8 +224,11 @@
   (define option (grammar-find-by-abbr (parser-grammar parser) opt))
   (cond 
     ((not option)
+      (if (parser-allow-anything? parser)
+        #f
+        (begin
       (validate (parser-parent parser) (string-append "Unknown option '" opt "'.") opt)
-      (handle-solo-option (parser-parent parser) opt))
+          (handle-solo-option (parser-parent parser) opt))))
     (else 
       (advance! parser)
       (cond 
@@ -231,6 +247,48 @@
         (if (letter-or-digit? (string-ref opt 0))
           (handle-solo-option parser opt)
           #f)))))
+
+(define (long-option-name arg)
+  (let* ((index (string-index arg #\=))
+         (end (string-cursor-end arg))
+         (index* (string-cursor->index arg index)))
+    (if (not (string-cursor=? index end))
+      (substring arg 2 index*)
+      (substring arg 2 (string-length arg)))))
+
+(define (grammar-knows-long-option? grammar name)
+  (cond
+    ((grammar-find-by-name-or-alias grammar name) #t)
+    ((string-prefix? "no-" name)
+      (let ((option (grammar-find-by-name-or-alias
+                      grammar
+                      (substring name 3 (string-length name)))))
+        (and option (option-flag? option) (option-negatable? option))))
+    (else #f)))
+
+(define (grammar-knows-abbreviation? grammar arg)
+  (let loop ((index 1))
+    (cond
+      ((and (< index (string-length arg))
+            (letter-or-digit? (string-ref arg index)))
+        (loop (+ index 1)))
+      ((= index 1) #f)
+      (else
+        (let ((option (grammar-find-by-abbr
+                        grammar
+                        (substring arg 1 2))))
+          (if option #t #f))))))
+
+(define (parser-knows-current-option? parser)
+  (define arg (current parser))
+  (cond
+    ((string-prefix? "--" arg)
+      (grammar-knows-long-option? (parser-grammar parser) (long-option-name arg)))
+    ((and (> (string-length arg) 1)
+          (string-prefix? "-" arg)
+          (letter-or-digit? (string-ref arg 1)))
+      (grammar-knows-abbreviation? (parser-grammar parser) arg))
+    (else #f)))
 
 
 (define (letter-or-digit? ch)
@@ -252,17 +310,26 @@
       ((null? (parser-args parser)) (finish-parsing parser command arguments))
       (else 
         (cond 
-          ((string=? (current parser) "--") (finish-parsing parser command arguments))
+          ((string=? (current parser) "--")
+            (advance! parser)
+            (finish-parsing parser command arguments))
           ((assoc (current parser) (grammar-commands (parser-grammar parser)))
             => (lambda (entry)
                
                 (set! command (cons (advance! parser) (cdr entry)))
                 (finish-parsing parser command arguments)))
-          ((and (not (string=? (current parser) "--help"))
-                (not (string=? (current parser) "-h")) 
-                (grammar-default-command (parser-grammar parser))) => (lambda (command)
-      
-            (set! command (cons (advance! parser) (car (assoc command (grammar-commands (parser-grammar parser))))))))
+          ((let ((default-command (grammar-default-command (parser-grammar parser))))
+             (and default-command
+                  (not (string=? (current parser) "--help"))
+                  (not (string=? (current parser) "-h"))
+                  (not (parser-knows-current-option? parser))
+                  (let ((entry (assoc default-command (grammar-commands (parser-grammar parser)))))
+                    (set! command (cons default-command (cdr entry)))
+                    (finish-parsing parser command arguments)))))
+          ((parser-allow-anything? parser)
+            (parser-rest-set! parser 
+              (append (parser-rest parser) (list (advance! parser))))
+            (loop))
           (else 
             (cond 
               ((parse-solo-option parser) (loop))
@@ -285,9 +352,10 @@
              (null? (parser-rest parser))
              (not (assoc "help" (parser-results parser))))
     
-    (cond 
-      ((grammar-default-command (parser-grammar parser)) => (lambda (default-command)
-        (set! command (cons default-command (car (assoc default-command (grammar-commands (parser-grammar parser))))))))))
+    (let ((default-command (grammar-default-command (parser-grammar parser))))
+      (when default-command
+        (let ((entry (assoc default-command (grammar-commands (parser-grammar parser)))))
+          (set! command (cons default-command (cdr entry)))))))
 
   (when command 
     (validate (null? (parser-rest parser)) "cannot specify arguments before command")
@@ -300,12 +368,12 @@
       (define option (cdr entry))
       (define parsed-option (assoc name (parser-results parser)))
       (cond 
-        ((not (option-callback option)) #f)
         ((and (option-mandatory? option)
               (not parsed-option))
           (validate #f (string-append "Mandatory option '" name "' not provided.") name))
+        ((not (option-callback option)) #f)
         (else 
-          ((option-callback entry) 
+          ((option-callback option) 
             (if parsed-option 
               (cdr parsed-option)
               (option-defaults-to option))))))

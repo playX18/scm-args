@@ -16,6 +16,7 @@
     argument-results-flags
     argument-results-options
     argument-results-multi-options
+    argument-results-was-parsed?
     argument-results-has-option?)
   
   (include "results.scm"))

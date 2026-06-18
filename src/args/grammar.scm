@@ -20,6 +20,16 @@
   (allow-anything? grammar-allow-anything? grammar-allow-anything?-set!)
   (%usage %grammar-usage %grammar-usage-set!)) ; usage is populated with usage string once its generated
 
+(define-record-type <grammar-builder>
+  (%make-grammar-builder
+    allow-trailing?
+    allow-anything?
+    operations)
+  grammar-builder?
+  (allow-trailing? grammar-builder-allow-trailing?)
+  (allow-anything? grammar-builder-allow-anything?)
+  (operations grammar-builder-operations))
+
 (define (make-grammar . args)
   (let-optionals args ((allow-trailing? #t))
     (%make-grammar 
@@ -32,9 +42,142 @@
       #f
       #f)))
 
+(define (make-grammar-builder . args)
+  (let-optionals args ((allow-trailing? #t))
+    (%make-grammar-builder allow-trailing? #f '())))
+
+(define (grammar-builder-cons builder operation)
+  (%make-grammar-builder
+    (grammar-builder-allow-trailing? builder)
+    (grammar-builder-allow-anything? builder)
+    (cons operation (grammar-builder-operations builder))))
+
+(define (grammar-builder-allow-anything builder allow-anything?)
+  (%make-grammar-builder
+    (grammar-builder-allow-trailing? builder)
+    allow-anything?
+    (grammar-builder-operations builder)))
+
+(define (grammar-builder-allow-trailing builder allow-trailing?)
+  (%make-grammar-builder
+    allow-trailing?
+    (grammar-builder-allow-anything? builder)
+    (grammar-builder-operations builder)))
+
+(define (grammar-builder-add-separator builder separator)
+  (grammar-builder-cons builder (list 'separator separator)))
+
+(define (grammar-builder-add-command builder command . subgrammar?)
+  (grammar-builder-cons builder (list 'command command subgrammar?)))
+
+(define (grammar-builder-default-command builder command)
+  (grammar-builder-cons builder (list 'default-command command)))
+
+(define (grammar-builder-add-flag builder name . args)
+  (grammar-builder-cons builder (list 'flag name args)))
+
+(define (grammar-builder-add-option builder name . args)
+  (grammar-builder-cons builder (list 'option name args)))
+
+(define (grammar-builder-add-multi-option builder name . args)
+  (grammar-builder-cons builder (list 'multi-option name args)))
+
+(define (grammar-builder-build builder)
+  (define grammar (make-grammar (grammar-builder-allow-trailing? builder)))
+  (grammar-allow-anything?-set! grammar (grammar-builder-allow-anything? builder))
+  (for-each
+    (lambda (operation)
+      (case (car operation)
+        ((separator)
+          (grammar-add-separator! grammar (cadr operation)))
+        ((command)
+          (let* ((name (cadr operation))
+                 (subgrammar? (car (cddr operation)))
+                 (subgrammar (if (null? subgrammar?)
+                               (make-grammar)
+                               (let ((candidate (car subgrammar?)))
+                                 (if (grammar-builder? candidate)
+                                   (grammar-builder-build candidate)
+                                   candidate)))))
+            (grammar-add-command! grammar name subgrammar)))
+        ((default-command)
+          (grammar-default-command-set! grammar (cadr operation)))
+        ((flag)
+          (apply grammar-add-flag! grammar (cadr operation) (car (cddr operation))))
+        ((option)
+          (apply grammar-add-option! grammar (cadr operation) (car (cddr operation))))
+        ((multi-option)
+          (apply grammar-add-multi-option! grammar (cadr operation) (car (cddr operation))))))
+    (reverse (grammar-builder-operations builder)))
+  grammar)
+
+(define-syntax grammar*
+  (syntax-rules ()
+    ((_ clause ...)
+      (grammar-builder-build
+        (grammar*-clauses (make-grammar-builder) clause ...)))))
+
+(define-syntax define-grammar
+  (syntax-rules ()
+    ((_ name clause ...)
+      (define name (grammar* clause ...)))))
+
+(define-syntax grammar*-clauses
+  (syntax-rules (allow-trailing allow-anything separator flag option multi-option command subcommand default-command)
+    ((_ builder)
+      builder)
+    ((_ builder (allow-trailing value) rest ...)
+      (grammar*-clauses
+        (grammar-builder-allow-trailing builder value)
+        rest ...))
+    ((_ builder (allow-anything value) rest ...)
+      (grammar*-clauses
+        (grammar-builder-allow-anything builder value)
+        rest ...))
+    ((_ builder (separator text) rest ...)
+      (grammar*-clauses
+        (grammar-builder-add-separator builder text)
+        rest ...))
+    ((_ builder (flag name arg ...) rest ...)
+      (grammar*-clauses
+        (grammar-builder-add-flag builder name arg ...)
+        rest ...))
+    ((_ builder (option name arg ...) rest ...)
+      (grammar*-clauses
+        (grammar-builder-add-option builder name arg ...)
+        rest ...))
+    ((_ builder (multi-option name arg ...) rest ...)
+      (grammar*-clauses
+        (grammar-builder-add-multi-option builder name arg ...)
+        rest ...))
+    ((_ builder (command name) rest ...)
+      (grammar*-clauses
+        (grammar-builder-add-command builder name)
+        rest ...))
+    ((_ builder (command name subgrammar) rest ...)
+      (grammar*-clauses
+        (grammar-builder-add-command builder name subgrammar)
+        rest ...))
+    ((_ builder (subcommand name) rest ...)
+      (grammar*-clauses
+        (grammar-builder-add-command builder name)
+        rest ...))
+    ((_ builder (subcommand name subgrammar) rest ...)
+      (grammar*-clauses
+        (grammar-builder-add-command builder name subgrammar)
+        rest ...))
+    ((_ builder (default-command name) rest ...)
+      (grammar*-clauses
+        (grammar-builder-default-command builder name)
+        rest ...))))
+
+(define (grammar-clear-usage! grammar)
+  (%grammar-usage-set! grammar #f))
+
 (define (grammar-add-separator! grammar separator)
   (unless (string? separator)
     (error "Separator must be a string" separator))
+  (grammar-clear-usage! grammar)
   (grammar-options-and-separators-set! grammar
     (cons separator (grammar-options-and-separators grammar))))
 
@@ -46,6 +189,7 @@
                         (car subgrammar?))))
     (unless (grammar? subgrammar)
       (error "Grammar for command must be of type <grammar>" subgrammar))
+    (grammar-clear-usage! grammar)
     (grammar-commands-set! grammar
       (cons (cons command subgrammar) (grammar-commands grammar)))
     subgrammar))
@@ -196,6 +340,7 @@
                     'hide-negated-usage?: hide-negated-usage?
                     'aliases: aliases)))
       
+      (grammar-clear-usage! grammar)
       (grammar-options-set! grammar
         (cons (cons name option) (grammar-options grammar)))
       (grammar-options-and-separators-set! grammar

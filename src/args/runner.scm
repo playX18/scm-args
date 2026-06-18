@@ -111,6 +111,12 @@
     (else 
       (string-append (command-runner-executable-name runner) " <command> [arguments]"))))
   
+(define (command-set-runner-recursively! cmd runner)
+  (command-runner-set! cmd runner)
+  (for-each
+    (lambda (entry)
+      (command-set-runner-recursively! (cdr entry) runner))
+    (command-subcommands cmd)))
 
 
 (define (command-runner-add-command! runenr cmd . rest)
@@ -135,7 +141,7 @@
       (grammar-default-command-set! 
         (command-runner-grammar runenr)
         (command-name cmd)))
-    (command-runner-set! cmd runenr)))
+    (command-set-runner-recursively! cmd runenr)))
 
 (define (command-runner-parse runner args)
   (grammar-parse (command-runner-grammar runner) args))
@@ -368,7 +374,9 @@
       (grammar-default-command-set! 
         (command-grammar cmd)
         (command-name subcommand)))
-    (command-parent-set! subcommand cmd)))
+    (command-parent-set! subcommand cmd)
+    (when (command-runner cmd)
+      (command-set-runner-recursively! subcommand (command-runner cmd)))))
 
 
 ;; pre-built help command
@@ -387,9 +395,21 @@
     ((null? rest)
       (command-runner-print-usage (command-runner cmd)))
     (else 
-      ;; walk down the command tree for the selected command
-      ;; or subcommand
-      #f)))
+      (let loop ((names rest)
+                 (commands (command-runner-commands (command-runner cmd)))
+                 (command-str (command-runner-executable-name (command-runner cmd))))
+        (let* ((name (car names))
+               (entry (assoc name commands)))
+          (unless entry
+            (error (string-append "Could not find a command named '" name "' for '" command-str "'.")))
+          (let ((target (cdr entry)))
+            (cond
+              ((null? (cdr names))
+                (command-print-usage target))
+              (else
+                (loop (cdr names)
+                      (command-subcommands target)
+                      (string-append command-str " " name))))))))))
 
 (define help-command (command "help"
   'description: help-description

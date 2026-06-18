@@ -6,7 +6,23 @@
           (args help optional))
   (export 
     make-grammar
+    make-grammar-builder
+    grammar*
+    define-grammar
     grammar?
+    grammar-builder?
+    grammar-builder-allow-trailing?
+    grammar-builder-allow-anything?
+    grammar-builder-operations
+    grammar-builder-allow-trailing
+    grammar-builder-allow-anything
+    grammar-builder-add-option
+    grammar-builder-add-flag
+    grammar-builder-add-multi-option
+    grammar-builder-add-command
+    grammar-builder-add-separator
+    grammar-builder-default-command
+    grammar-builder-build
     grammar-options grammar-options-set!
     grammar-commands grammar-commands-set!
     grammar-aliases grammar-aliases-set!

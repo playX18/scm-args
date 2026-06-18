@@ -24,60 +24,57 @@
     rest
     arguments))
 
+(define (argument-results-find-option results name)
+  (grammar-find-by-name-or-alias (argument-results-grammar results) name))
+
+(define (argument-results-parsed-value results option)
+  (cond
+    ((assoc (option-name option) (argument-results-parsed results)) => cdr)
+    (else #f)))
+
 (define (argument-results-flags results)
-  (define grammar (argument-results-grammar results))
-  (define parsed (argument-results-parsed results))
   (lambda (flag)
-    (define option (assoc flag (grammar-options grammar)))
+    (define option (argument-results-find-option results flag))
     (cond 
       ((not option)
         (error (string-append "No flag named: '--" flag "'")))
-      ((not (option-flag? (cdr option)))
+      ((not (option-flag? option))
         
         (error (string-append "Option '--" flag "' is not a flag option")))
       (else 
-        (option-value (cdr option)
-          (cond 
-            ((assoc flag parsed) => cdr)
-            (else #f)))))))
+        (option-value option (argument-results-parsed-value results option))))))
 
 (define (argument-results-options results)
-  (define grammar (argument-results-grammar results))
-  (define parsed (argument-results-parsed results))
   (lambda (name)
-    (define option (assoc name (grammar-options grammar)))
+    (define option (argument-results-find-option results name))
     (cond 
       ((not option)
         (error (string-append "No option named: '--" name "'")))
-      ((not (option-single? (cdr option)))
+      ((not (option-single? option))
         (error (string-append "Option '--" name "' is not a single-value option")))
-      ((and (option-mandatory? (cdr option))
-            (not (assoc name parsed)))
+      ((and (option-mandatory? option)
+            (not (argument-results-was-parsed? results name)))
         (error (string-append "Mandatory option '--" name "' not provided")))
       (else 
-        (option-value (cdr option)
-          (cond 
-            ((assoc (option-name (cdr option)) parsed) => cdr)
-            (else #f)))))))
+        (option-value option (argument-results-parsed-value results option))))))
 
 (define (argument-results-multi-options results)
-  (define grammar (argument-results-grammar results))
-  (define parsed (argument-results-parsed results))
   (lambda (name)
-    (define option (assoc name (grammar-options grammar)))
+    (define option (argument-results-find-option results name))
     (cond 
       ((not option)
         (error (string-append "No option named: '--" name "'")))
-      ((not (option-multi? (cdr option)))
+      ((not (option-multi? option))
         (error (string-append "Option '--" name "' is not a multi-value option")))
       (else 
-        (option-value (cdr option)
-          (cond 
-            ((assoc (option-name (cdr option)) parsed) => cdr)
-            (else #f)))))))
+        (option-value option (argument-results-parsed-value results option))))))
+
+(define (argument-results-was-parsed? results name)
+  (define option (argument-results-find-option results name))
+  (cond
+    ((not option) #f)
+    ((assoc (option-name option) (argument-results-parsed results)) => (lambda (pair) #t))
+    (else #f)))
 
 (define (argument-results-has-option? results name)
-  (define parsed (argument-results-parsed results))
-  (cond 
-    ((assoc name parsed) => (lambda (pair) #t))
-    (else #f)))
+  (argument-results-was-parsed? results name))
